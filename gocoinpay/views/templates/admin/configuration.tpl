@@ -40,10 +40,10 @@
                 <div class="margin-form">
                     <input type="text" name="gocoin_token" class="input-text" value="{if $gocoin_configuration.GOCOIN_TOKEN}{$gocoin_configuration.GOCOIN_TOKEN|escape:'htmlall':'UTF-8'}{/if}" /> <sup>*</sup>
                 </div>
-                <!--label for="gocoin_pay_type">{l s='Payment Type:' mod='gocoin'}</label></td>
+                {*<label for="gocoin_pay_type">{l s='Payment Type:' mod='gocoin'}</label></td>
                 <div class="margin-form">
                   <input type="text" name="gocoin_pay_type" class="input-text" value="{if $gocoin_configuration.GOCOIN_PAY_TYPE}{$gocoin_configuration.GOCOIN_PAY_TYPE|escape:'htmlall':'UTF-8'}{/if}" /> <sup>*</sup>
-                </div-->
+                </div>*}
                 <script type="text/javascript">
                     var baseurl = '{$base_url}';
                     function get_api_token() {
