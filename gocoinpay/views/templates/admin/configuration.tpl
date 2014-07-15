@@ -21,6 +21,11 @@
         </div>
     {/if}
 
+    {if $php_version_allowed eq 'N'}
+      <div class="error">
+          <div style="color:#ff0000;font-weight: bold;"> The minimum PHP version required for GoCoin plugin is 5.3.0</div>
+      </div>
+    {else}
     <form action="" method="post" id="" class="half-form L">
         <input type="hidden" id="cid" value="{if $gocoin_configuration.GOCOIN_MERCHANT_ID}{$gocoin_configuration.GOCOIN_MERCHANT_ID|escape:'htmlall':'UTF-8'}{/if}"/>
         <input type="hidden" id="csec" value="{if $gocoin_configuration.GOCOIN_ACCESS_KEY}{$gocoin_configuration.GOCOIN_ACCESS_KEY|escape:'htmlall':'UTF-8'}{/if}"/>
@@ -40,10 +45,7 @@
                 <div class="margin-form">
                     <input type="text" name="gocoin_token" class="input-text" value="{if $gocoin_configuration.GOCOIN_TOKEN}{$gocoin_configuration.GOCOIN_TOKEN|escape:'htmlall':'UTF-8'}{/if}" /> <sup>*</sup>
                 </div>
-                {*<label for="gocoin_pay_type">{l s='Payment Type:' mod='gocoin'}</label></td>
-                <div class="margin-form">
-                  <input type="text" name="gocoin_pay_type" class="input-text" value="{if $gocoin_configuration.GOCOIN_PAY_TYPE}{$gocoin_configuration.GOCOIN_PAY_TYPE|escape:'htmlall':'UTF-8'}{/if}" /> <sup>*</sup>
-                </div>*}
+                 
                 <script type="text/javascript">
                     var baseurl = '{$base_url}';
                     function get_api_token() {
@@ -68,7 +70,7 @@
                         //alert(currentUrl);
                         var url = "https://dashboard.gocoin.com/auth?response_type=code"
                                 + "&client_id=" + client_id
-                                + "&scope=user_read+merchant_read+invoice_read_write"
+                                + "&scope=user_read+invoice_read_write"
                                 + "&redirect_uri=" + encodeURIComponent(currentUrl);
                         var strWindowFeatures = "location=yes,height=570,width=520,scrollbars=yes,status=yes";
                         var win = window.open(url, "_blank", strWindowFeatures);
@@ -90,4 +92,5 @@
             <span class="small"><sup style="color: red;">*</sup> {l s='Required fields' mod='gocoin'}</span>
         </fieldset>
     </form>
+    {/if}    
 </div>

@@ -27,6 +27,18 @@ class Gocoinpay extends PaymentModule {
         require(_PS_MODULE_DIR_ . 'gocoinpay/backward_compatibility/backward.php');
         $this->context->smarty->assign('base_url', _PS_BASE_URL_ . __PS_BASE_URI__);
         $this->context->smarty->assign('base_dir', __PS_BASE_URI__);
+        
+         if (version_compare(PHP_VERSION, '5.3.0') >= 0) {
+               $php_version_allowed = true ;
+               $this->context->smarty->assign('php_version_allowed', 'Y');      
+         }
+         else{
+               $php_version_allowed = false ;
+               $this->_error[] = 'PHP Version Error:';// The minimum PHP version required for GoCoin plugin is 5.3.0
+               $this->context->smarty->assign('php_version_allowed', 'N');     
+         }
+        
+        
     }
 
     /** GoCoin installation process:
@@ -164,7 +176,7 @@ class Gocoinpay extends PaymentModule {
           if (!isset($_POST['gocoin_access_key']) || !$_POST['gocoin_access_key'])
           $this->_error[] = $this->l('Client Secret Key is required.');
          */
-
+         
         if (!isset($_POST['gocoin_token']) || !$_POST['gocoin_token'])
             $this->_error[] = $this->l('Access Token is required.');
 
@@ -191,11 +203,14 @@ class Gocoinpay extends PaymentModule {
         if (!$this->checkCurrency($params['cart']))
             return;
         
+         if (count($this->_error))
+            return;
+        
         $this->smarty->assign(array(
             'this_path'        => $this->_path,
             'this_path_bw'     => $this->_path,
             'this_path_ssl'    => Tools::getShopDomainSsl(true, true) . __PS_BASE_URI__ . 'modules/' . $this->name . '/',
-            'paytype'          => $pay_arr,
+           // 'paytype'          => $pay_arr,
             'gocoinpay_action' => $this->context->link->getModuleLink('gocoinpay', 'payment' ,array(),(Configuration::get('PS_SSL_ENABLED'))?true :false )
         ));
         return $this->display(__FILE__, 'payment.tpl');

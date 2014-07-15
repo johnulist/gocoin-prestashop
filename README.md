@@ -1,4 +1,4 @@
-Version 1.3.3
+Version 1.3.4
 
 &copy;2014 GoCoin Holdings Limited and GoCoin International Group of companies hereby grants you permission to utilize a copy of this software and documentation in connection with your use of the GoCoin.com service subject the the published Terms of Use and Privacy Policy published on the site and subject to change from time to time at the discretion of GoCoin.<br><br>
 
@@ -11,7 +11,7 @@ GoCoin will send a notification to your server which this plugin handles.  Then 
 The order status in the admin panel will be "Payment Accepted" when the order is placed and payment has been confirmed. 
 
 #### Important Note: 
-Version 1.0.0 of this plugin only supports US Dollars as the Base Currency. Please make sure your Currency is set to US Dollars. Support for additional currencies is coming soon. 
+Version 1.3.4 of this plugin only supports US Dollars as the Base Currency. Please make sure your Currency is set to US Dollars. Support for additional currencies is coming soon. Also only one language English is supported.
 
 This plugin now supports Litecoin as well as Bitcoin
 
@@ -21,14 +21,14 @@ This plugin now supports Litecoin as well as Bitcoin
 a. 	Copy "gocoinpay" folder and its contents into your "modules" directory (prestashop/modules)<br>
 b. 	Copy "gocoinlib" folder and its contents into your "classes" directory (prestashop/classes)<br>
 c. 	Open /config/xml/tab_modules_list.xml file in any editor and locate the following XML node <br>
-		`<tab class_name="AdminPayment" display_type="default_list">`<br>
+		<tab class_name="AdminPayment" display_type="default_list"><br>
 		This has list of all Prestashop Payment extensions. Add following entry to the list<br>
-		`<module name="gocoinpay" position="32"/>`<br>
+		<module name="gocoinpay" position="32"/><br>
 		Save the file.<br>
 c.	Open /config/xml/modules_list.xml file in any editor and locate the following XML node <br>
-		`<modules type="partner">`<br>
+		<modules type="partner"><br>
 		This has list of all Prestashop 3rd party extensions. Add following entry to the list<br>
-		`<module name="gocoinpay"/>`<br>
+		<module name="gocoinpay"/> <br>
 		Save the file.<br>
 
 ### 2. Setting up an application.
@@ -49,11 +49,11 @@ https://YOUR_DOMAIN/index.php
 Set the Application and Callback URL. The Callback URL will be https://YOUR_DOMAIN/index.php<br>
 Make sure to use https for a production site - its part of the OAuth standard.
 
-More information on creating GoCoin connected applications can be found [here](http://www.gocoin.com/docs)
+More information on creating GoCoin connected applications can be found [here](http://www.gocoin.com/docs/create_application)
 
 ### 3. Configuration
 
-1. In the Admin panel click Modules > Payment , then click Install button under GoCoin.<br>
+1. In the Admin panel click Modules > Payment , then click Install button under GoCoin. <br><br>
 
 2. Configure GoCoin Payment extension<br>
   a) Enter Merchant ID and Secret key <br>

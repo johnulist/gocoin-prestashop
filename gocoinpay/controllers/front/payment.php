@@ -12,6 +12,9 @@ class GocoinpayPaymentModuleFrontController extends ModuleFrontController {
 
         $cart = $this->context->cart;
 
+        $error_log_path =  _PS_ROOT_DIR_.'/log/gocoin_error.log';
+        $errorlog       = '';
+        
         if (!$this->module->checkCurrency($cart))
             Tools::redirect('index.php?controller=order');
         $merchant_id                = Configuration::get('GOCOIN_MERCHANT_ID');
@@ -97,28 +100,37 @@ class GocoinpayPaymentModuleFrontController extends ModuleFrontController {
         $options['user_defined_8'] = $signature;
 
         $json_str = '';
-        if (!$gocoin_token) {
-            Tools::redirect('index.php?controller=order');
+        $result = '';
+        $messages ='';
+        $redirect ='';
+        if (!$gocoin_token) { //-----------If  Token not found 
+            $result = 'error'; 
+            $errorlog      .= 'Access Token Blank';
+            $messages =  'GoCoin Payment Paramaters not Set. Please report this to Site Administrator.';
+            
         }
-        else {
+        else { // If  Token  found 
             try {
-                $user = GoCoin::getUser($gocoin_token);
+                $user = GoCoin::getUser($gocoin_token); //----------- If no Error in user creation from token
                 if ($user) {
                     $merchant_id = $user->merchant_id;
 
-                    if (!empty($merchant_id)) {
+                    if (!empty($merchant_id)) { //----------- If merchant_id Variable is not blank 
                         $invoice = GoCoin::createInvoice($gocoin_token, $merchant_id, $options);
                         if (!isset($invoice) ) {
-                            $result = 'error';
-                            $messages = 'GoCoin does not permit';
+                           $result = 'error';
+                           $messages =  'Error in Processing Order using GoCoin, please try selecting other payment options';
                         }
                         elseif (isset($invoice->errors)) {
                             $result = 'error';
-                            $messages = 'GoCoin does not permit';
+                            $errormsg = isset($invoice->errors->currency_code[0])? $invoice->errors->currency_code[0] : '';
+                            $messages =  "Error in Processing Order using GoCoin ".$errormsg;
+                            $errorlog      .=  $errormsg;
                         }
                         elseif (isset($invoice->error)) {
                             $result = 'error';
-                            $messages = $invoice->error;
+                            $messages =  "Error in Processing Order using GoCoin ".$invoice->error;
+                            $errorlog      .=  $invoice->error;
                         }
                         elseif (isset($invoice->merchant_id) && $invoice->merchant_id != '' && isset($invoice->id) && $invoice->id != '') {
                             $url = $gocoin_url . $invoice->merchant_id . "/invoices/" . $invoice->id;
@@ -143,19 +155,35 @@ class GocoinpayPaymentModuleFrontController extends ModuleFrontController {
                             $gocoin->addTransaction($type = 'payment', $json_array);  
                            
                         }
+                        else { //-----------  if $invoice is balnk 
+                            $result = 'error';
+                            $messages =  'Error in Processing Order using GoCoin, please try selecting other payment options';
+                            $errorlog      .=  'invoice variable blank ';
+                        }
                     }
-                } else {
+                    else
+                    {  //----------- If merchant_id Variable is blank 
+                        $result = 'error';
+                        $messages =  'Error in Processing Order using GoCoin, please try selecting other payment options';
+                        $errorlog      .=  'merchant_id variable blank ';
+                    }
+                } 
+                else {//----------- If user Variable is blank 
                     $result = 'error';
-                    $messages = 'GoCoin Invalid Settings';
+                    $messages =  'Error in Processing Order using GoCoin, please try selecting other payment options';
+                    $errorlog      .=  'User variable blank ';
                 }
             }
             catch (Exception $e) 
-            {
+            {  //----------- If  error in user creation from token
                 $result = 'error';
-                $messages = 'GoCoin Invalid Settings';
+                $messages = 'Error in Processing Order using GoCoin, please try selecting other payment options';
+                $errorlog      .=  'error in user creation from token';
             }
         }
-        $this->context->smarty->assign(array(
+        
+        
+         $this->context->smarty->assign(array(
             '_show_breadcrumb' => $show_breadcrumb,
             '_payformaction' => $this->context->link->getModuleLink('gocoinpay', 'payform', array(),  (Configuration::get('PS_SSL_ENABLED'))?true :false),
             '_result'        => $result,
@@ -169,8 +197,19 @@ class GocoinpayPaymentModuleFrontController extends ModuleFrontController {
             'this_path_bw'   => $this->module->getPathUri(),
             'this_path_ssl'  => Tools::getShopDomainSsl(true, true) . __PS_BASE_URI__ . 'modules/' . $this->module->name . '/'
         ));
+        
+        if(isset($result) && $result=='error'){
+               error_log($date = date('d.m.Y h:i:s').':'.$messages.'\n', 3, $error_log_path);
+               $this->setTemplate('errors-messages.tpl');
+        }
+        elseif(isset($result) && $result=='success'){
+            $this->setTemplate('payment_execution.tpl');
+        }
+        else{
+              Tools::redirect('index.php?controller=order');
+         }
 
-        $this->setTemplate('payment_execution.tpl');
+        
     }
 }
 
