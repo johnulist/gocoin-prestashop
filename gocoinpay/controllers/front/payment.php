@@ -11,12 +11,12 @@ class GocoinpayPaymentModuleFrontController extends ModuleFrontController {
         $gocoin = new Gocoinpay();
 
         $cart = $this->context->cart;
-
+        $ssl = Configuration::get('PS_SSL_ENABLED')?true:null;
         $error_log_path =  _PS_ROOT_DIR_.'/log/gocoin_error.log';
         $errorlog       = '';
         
         if (!$this->module->checkCurrency($cart))
-            Tools::redirect('index.php?controller=order');
+            Tools::redirect($this->context->link->getPageLink('order.php', ''));
         $merchant_id                = Configuration::get('GOCOIN_MERCHANT_ID');
         $gocoin_access_key          = Configuration::get('GOCOIN_ACCESS_KEY');
         $gocoin_token               = Configuration::get('GOCOIN_TOKEN');
@@ -48,30 +48,25 @@ class GocoinpayPaymentModuleFrontController extends ModuleFrontController {
 
         $price_currency = isset($_POST['paytype']) && !empty($_POST['paytype']) ? $_POST['paytype'] : '';
         if ($price_currency == '') {
-            Tools::redirect('index.php?controller=order');
+            Tools::redirect($this->context->link->getPageLink('order.php', $ssl));
         }
-
-
+        
         $total = (float) $this->context->cart->getOrderTotal(true);
-
         $url = array();
-        $url['cancel_url']      = $this->context->link->getPageLink('order.php', '');
+        $url['cancel_url']      = $this->context->link->getPageLink('order.php', $ssl);
         $url['callback_url']    = $this->context->link->getModuleLink('gocoinpay', 'validation', array('pps' => 1), (Configuration::get('PS_SSL_ENABLED'))?true :false);
         
         $ps_version = _PS_VERSION_;
         $show_breadcrumb = '1';
-         if((int) version_compare($ps_version, '1.5.6.2', '>')){
-         $url['redirect_url']    =  (Configuration::get('PS_SSL_ENABLED') ? Tools::getShopDomainSsl(true) : Tools::getShopDomain(true)).__PS_BASE_URI__ . 'order-confirmation?id_cart=' . (int) $this->context->cart->id . '&id_module=' . (int) $this->module->id . '&key=' . $this->context->customer->secure_key ; 
-         $show_breadcrumb = '0';
-        }  
-        elseif ((int) version_compare($ps_version, '1.4', '>')) {
-          $url['redirect_url']    =  (Configuration::get('PS_SSL_ENABLED') ? Tools::getShopDomainSsl(true) : Tools::getShopDomain(true)).__PS_BASE_URI__ . 'order-confirmation.php?id_cart=' . (int) $this->context->cart->id . '&id_module=' . (int) $this->module->id . '&key=' . $this->context->customer->secure_key ; 
-        }
-        else{
-            $url['redirect_url']    = $this->context->link->getPageLink('order-confirmation.php', null, null, array('id_cart' => (int) $this->context->cart->id, 'key' => $this->context->customer->secure_key, 'id_module' => $this->module->id));
-        }
+        $return_url_param = array('id_cart'   =>(int) $this->context->cart->id,
+                          			  'id_module' =>(int) $this->module->id,
+	  	                            'key'		    =>	$this->context->customer->secure_key);
         
-
+        if((int) version_compare($ps_version, '1.5.6.2', '>')){
+             $show_breadcrumb = '0';
+        }  
+        $url['redirect_url'] = $this->context->link->getPageLink('order-confirmation.php', $ssl, (int)$this->context->language->id,$return_url_param);
+        
         $options = array();
         $options = array(
             'price_currency'        => $price_currency,
@@ -93,8 +88,6 @@ class GocoinpayPaymentModuleFrontController extends ModuleFrontController {
             'user_defined_2'        => $billing_customer->secure_key,
             'user_defined_3'        => $cart->id,
         );
-
-        
         $key                       = $gocoin->getGUID();
         $signature                 = $gocoin->getSignatureText($options, $key);
         $options['user_defined_8'] = $signature;
@@ -206,10 +199,8 @@ class GocoinpayPaymentModuleFrontController extends ModuleFrontController {
             $this->setTemplate('payment_execution.tpl');
         }
         else{
-              Tools::redirect('index.php?controller=order');
+              Tools::redirect($this->context->link->getPageLink('order.php', $ssl));
          }
-
-        
-    }
+   }
 }
 

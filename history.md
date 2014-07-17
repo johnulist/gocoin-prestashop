@@ -9,3 +9,6 @@
   		 /gocoinpay/controllers/front/payment.php<br>
   		 /gocoinpay/controllers/front/validation.php<br>
 
+#### v1.3.5
+1) Added multi language support using function getPageLink() in files (/controllers/front/payment.php and payform.php)
+2) Corrected logo image
