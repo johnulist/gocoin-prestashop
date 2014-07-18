@@ -15,7 +15,7 @@ class gocoin_validation
   
 	public function getNotifyData() {
        $post_data = file_get_contents("php://input");
-            error_log('\n'.date('l jS \of F Y h:i:s A').$post_data,3,'/var/www/prestashop/log/tester.log');
+            error_log('\n'.date('l jS \of F Y h:i:s A').$post_data,3,_PS_ROOT_DIR_.'/log/tester.log');
         if (!$post_data) {
             $response = new stdClass();
             $response->error = 'Post Data Error';
@@ -122,7 +122,7 @@ class gocoin_validation
                }
                elseif(!empty($fprint)){
                     $msg = "\n Fingerprint : ".$fprint. "does not match for Order id :".$order_id;
-                    error_log($msg, 3, 'gocoin_error_log.txt');
+                    error_log($msg, 3, _PS_ROOT_DIR_.'/log/gocoin_error_log.txt');
                 }
                   
            }

@@ -9,6 +9,8 @@ class GocoinpayPayformModuleFrontController extends ModuleFrontController
   
 	public function initContent()
 	{
+      
+      $ssl = Configuration::get('PS_SSL_ENABLED')?true:null;
       $this->gocoin = new Gocoinpay();
       $_url     = isset($_POST['gurl'])  && !empty($_POST['gurl'])?$_POST['gurl']:'';
       if(!empty($_url)){
@@ -17,7 +19,7 @@ class GocoinpayPayformModuleFrontController extends ModuleFrontController
       }
      else 
      {
-           Tools::redirect('index.php?controller=order');
+           Tools::redirect($this->context->link->getPageLink('order.php', $ssl));
          exit;
       }
 	}

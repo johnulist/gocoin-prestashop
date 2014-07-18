@@ -34,14 +34,6 @@
         {/if}
     </p>
 
-    {if $_result eq 'error'}
-
-        <p style="padding-left:20px;padding-top:20px; margin-top:20px;background:#CC0000;border: 1px solid #900 ;color: #ffffff; ">
-            - <span >{$_messages}</span>
-        </p>
-
-    {/if}
-    <br>
     <table width='100%'>
         <tr>
             <td valign="top" class="cart_navigation" id="cart_navigation">
