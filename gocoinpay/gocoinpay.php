@@ -1,24 +1,23 @@
 <?php
+
 if (!defined('_PS_VERSION_'))
     exit;
 
 class Gocoinpay extends PaymentModule {
 
-    private $_error         = array();
-    private $_validation    = array();
-    private $_shop_country  = array();
+    private $_error = array();
+    private $_validation = array();
+    private $_shop_country = array();
 
     public function __construct() {
 
         $this->name = 'gocoinpay';
-        $this->version = '1.3.5';
+        $this->version = '1.3.6';
         $this->author = 'GoCoinpay';
         $this->className = 'Gocoinpay';
         $this->tab = 'payments_gateways';
 
         parent::__construct();
-        Configuration::updateValue('GOCOIN_URL', 'https://gateway.gocoin.com/merchant/');
-        Configuration::updateValue('GOCOIN_PAY_TYPE', 'Bitcoin|Litcoin');
         $this->_shop_country = new Country((int) Configuration::get('PS_SHOP_COUNTRY_ID'));
         $this->displayName = $this->l((Validate::isLoadedObject($this->_shop_country) && $this->_shop_country->iso_code == 'MX') ? 'GoCoin' : 'GoCoin');
         $this->description = $this->l((Validate::isLoadedObject($this->_shop_country) && $this->_shop_country->iso_code == 'MX') ? 'Accept payments using Bitcoin or Licoin using GoCoin Payment Gateway.' : 'Accept payments using Bitcoin or Licoin using GoCoin Payment Gateway.');
@@ -27,18 +26,15 @@ class Gocoinpay extends PaymentModule {
         require(_PS_MODULE_DIR_ . 'gocoinpay/backward_compatibility/backward.php');
         $this->context->smarty->assign('base_url', _PS_BASE_URL_ . __PS_BASE_URI__);
         $this->context->smarty->assign('base_dir', __PS_BASE_URI__);
-        
-         if (version_compare(PHP_VERSION, '5.3.0') >= 0) {
-               $php_version_allowed = true ;
-               $this->context->smarty->assign('php_version_allowed', 'Y');      
-         }
-         else{
-               $php_version_allowed = false ;
-               $this->_error[] = 'PHP Version Error:';// The minimum PHP version required for GoCoin plugin is 5.3.0
-               $this->context->smarty->assign('php_version_allowed', 'N');     
-         }
-        
-        
+
+        if (version_compare(PHP_VERSION, '5.3.0') >= 0) {
+            $php_version_allowed = true;
+            $this->context->smarty->assign('php_version_allowed', 'Y');
+        } else {
+            $php_version_allowed = false;
+            $this->_error[] = 'PHP Version Error:'; // The minimum PHP version required for GoCoin plugin is 5.3.0
+            $this->context->smarty->assign('php_version_allowed', 'N');
+        }
     }
 
     /** GoCoin installation process:
@@ -49,11 +45,6 @@ class Gocoinpay extends PaymentModule {
      * @return boolean Installation result
      */
     public function install() {
-        /* This Addon is only intended to work in the USA, Canada and Mexico */
-        /* if (Validate::isLoadedObject($this->_shop_country) && !in_array($this->_shop_country->iso_code, array('US', 'MX', 'CA')))
-          {
-
-          } */
 
         /* The cURL PHP extension must be enabled to use this module */
         if (!function_exists('curl_version')) {
@@ -71,7 +62,7 @@ class Gocoinpay extends PaymentModule {
 
         return parent::install() && $this->registerHook('payment') && $this->registerHook('adminOrder') &&
                 $this->registerHook('header') && $this->registerHook('orderConfirmation') && $this->registerHook('shoppingCartExtra') &&
-                $this->registerHook('productFooter') && $this->registerHook('BackOfficeHeader') && $this->_installDb();
+                $this->registerHook('productFooter') && $this->registerHook('BackOfficeHeader')  ;
     }
 
     /**
@@ -79,26 +70,6 @@ class Gocoinpay extends PaymentModule {
      *
      * @return boolean Database table installation result
      */
-    private function _installDb() {
-        return Db::getInstance()->Execute('
-    CREATE TABLE IF NOT EXISTS  `' . _DB_PREFIX_ . 'gocoin_ipn`  (
-      `id` int(10) unsigned NOT NULL auto_increment,
-      `cart_id` int(10) unsigned default NULL,
-      `order_id` int(10) unsigned default NULL,
-      `invoice_id` varchar(200) NOT NULL,
-      `url` varchar(400) NOT NULL,
-      `status` varchar(100) NOT NULL,
-      `btc_price` decimal(16,8) NOT NULL,
-      `price` decimal(16,8) NOT NULL,
-      `currency` varchar(10) NOT NULL,
-      `currency_type` varchar(10) NOT NULL,
-      `invoice_time` datetime NOT NULL,
-      `expiration_time` datetime NOT NULL,
-      `updated_time` datetime NOT NULL,
-      `fingerprint` varchar(250) NOT NULL,
-      PRIMARY KEY  (`id`)
-    )ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8 AUTO_INCREMENT=1');
-    }
 
     /**
      * GoCoin uninstallation process:
@@ -110,7 +81,7 @@ class Gocoinpay extends PaymentModule {
      * @return boolean Uninstallation result
      */
     public function uninstall() {
-        $keys_to_uninstall = array('GOCOIN_MERCHANT_ID', 'GOCOIN_ACCESS_KEY', 'GOCOIN_TOKEN');
+        $keys_to_uninstall = array('GOCOIN_MERCHANT_ID', 'GOCOIN_ACCESS_KEY');
         $result = true;
         foreach ($keys_to_uninstall as $key_to_uninstall)
             $result &= Configuration::deleteByName($key_to_uninstall);
@@ -118,8 +89,8 @@ class Gocoinpay extends PaymentModule {
         /* Uncomment this line if you would like to also delete the Transaction details table */
         /* $result &= Db::getInstance()->Execute('DROP TABLE `'._DB_PREFIX_.'gocoin_ipn`'); */
         return $result && parent::uninstall();
-   }
- 
+    }
+
     /* GoCoin configuration section
      *
      * @return HTML page (template) to configure the Addon
@@ -169,20 +140,15 @@ class Gocoinpay extends PaymentModule {
      */
 
     private function _saveSettingsBasic() {
-        /* if (!isset($_POST['gocoin_merchant_id']) || !$_POST['gocoin_merchant_id']){
-          $this->_error[] = $this->l('Client ID is required.');
-
-          }
-          if (!isset($_POST['gocoin_access_key']) || !$_POST['gocoin_access_key'])
-          $this->_error[] = $this->l('Client Secret Key is required.');
-         */
-         
-        if (!isset($_POST['gocoin_token']) || !$_POST['gocoin_token'])
-            $this->_error[] = $this->l('Access Token is required.');
+        if (!isset($_POST['gocoin_merchant_id']) || !$_POST['gocoin_merchant_id']) {
+            $this->_error[] = $this->l('Client ID is required.');
+        }
+        if (!isset($_POST['gocoin_access_key']) || !$_POST['gocoin_access_key']) {
+            $this->_error[] = $this->l('Client Secret Key is required.');
+        }
 
         Configuration::updateValue('GOCOIN_MERCHANT_ID', pSQL(Tools::getValue('gocoin_merchant_id')));
         Configuration::updateValue('GOCOIN_ACCESS_KEY', pSQL(Tools::getValue('gocoin_access_key')));
-        Configuration::updateValue('GOCOIN_TOKEN', pSQL(Tools::getValue('gocoin_token')));
 
 
         if (!count($this->_error))
@@ -197,21 +163,42 @@ class Gocoinpay extends PaymentModule {
      */
 
     public function hookPayment($params) {
-        if (!$this->active)
+      
+        if (!$this->active){
+            Logger::addLog("GoCoin Payment Gateway is not active ");            
             return;
+        }
+        if (!$this->checkCurrency($params['cart'])){
+            Logger::addLog("Currency is not set ");            
+            return;
+        }
+        if (count($this->_error))
+         {  
+                $msg = @implode (',', $this->_error);
+                Logger::addLog($msg);            
+                return;
+         }
+        $access_token = Configuration::get('GOCOIN_ACCESS_KEY');
+        $merchant_id = Configuration::get('GOCOIN_MERCHANT_ID');
+        
+        // Check to make sure we have an access token (API Key)
+        if (empty($access_token)) {
+             Logger::addLog("GoCoin API key is not set ");            
+            return;
+        }
+        //Check to make sure we have a merchant ID
+       if (empty($merchant_id)) {
+              Logger::addLog("GoCoin merchant ID is not set ");   
+             return;
+        }
+        
 
-        if (!$this->checkCurrency($params['cart']))
-            return;
-        
-         if (count($this->_error))
-            return;
-        
         $this->smarty->assign(array(
-            'this_path'        => $this->_path,
-            'this_path_bw'     => $this->_path,
-            'this_path_ssl'    => Tools::getShopDomainSsl(true, true) . __PS_BASE_URI__ . 'modules/' . $this->name . '/',
-           // 'paytype'          => $pay_arr,
-            'gocoinpay_action' => $this->context->link->getModuleLink('gocoinpay', 'payment' ,array(),(Configuration::get('PS_SSL_ENABLED'))?true :false )
+            'this_path' => $this->_path,
+            'this_path_bw' => $this->_path,
+            'this_path_ssl' => Tools::getShopDomainSsl(true, true) . __PS_BASE_URI__ . 'modules/' . $this->name . '/',
+            // 'paytype'          => $pay_arr,
+            'gocoinpay_action' => $this->context->link->getModuleLink('gocoinpay', 'payment', array(), (Configuration::get('PS_SSL_ENABLED')) ? true : false )
         ));
         return $this->display(__FILE__, 'payment.tpl');
     }
@@ -235,7 +222,7 @@ class Gocoinpay extends PaymentModule {
      */
 
     public function hookOrderConfirmation($params) {
-        
+
         if (!isset($params['objOrder']) || ($params['objOrder']->module != $this->name))
             return false;
         if (isset($params['objOrder']) && Validate::isLoadedObject($params['objOrder']) && isset($params['objOrder']->valid) &&
@@ -281,74 +268,54 @@ class Gocoinpay extends PaymentModule {
      * @return boolean Operation result
      */
 
-    public function addTransaction($type = 'payment', $details) {
-
-        return Db::getInstance()->insert("gocoin_ipn", $details);
-    }
-
-    public function updateTransaction($type = 'payment', $details) {
-
-        return Db::getInstance()->update("gocoin_ipn", array('order_id' => $details['order_id'],
-                    'status' => $details['status'],
-                    'updated_time' => $details['updated_time']
-                        )
-                        , "invoice_id = '" . $details['invoice_id'] . "' and  cart_id ='" . $details['cart_id'] . "' ");
-    }
-
-    public function getFPStatus($details) {
-        $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow("SELECT invoice_id FROM  `" . _DB_PREFIX_ . "gocoin_ipn`
-		WHERE `invoice_id` = '" . pSQL($details['invoice_id']) . "' and fingerprint='" . pSQL($details['fingerprint']) . "'");
-        return $result['invoice_id'];
-    }
-
-    public function getGUID() {
-        if (function_exists('com_create_guid')) {
-            $guid = com_create_guid();
-            $guid = str_replace("{", "", $guid);
-            $guid = str_replace("}", "", $guid);
-            return $guid;
-        } else {
-            mt_srand((double) microtime() * 10000); //optional for php 4.2.0 and up.
-            $charid = strtoupper(md5(uniqid(rand(), true)));
-            $hyphen = chr(45); // "-"
-            $uuid = substr($charid, 0, 8) . $hyphen
-                    . substr($charid, 8, 4) . $hyphen
-                    . substr($charid, 12, 4) . $hyphen
-                    . substr($charid, 16, 4) . $hyphen
-                    . substr($charid, 20, 12); // .chr(125) //"}"
-            return $uuid;
-        }
-    }
-
-    public function getSignatureText($data, $uniquekey) {
-        $query_str = '';
-        $include_params = array('price_currency', 'base_price', 'base_price_currency', 'order_id', 'customer_name', 'customer_city', 'customer_region', 'customer_postal_code', 'customer_country', 'customer_phone', 'customer_email');
+    public function sign($data, $key) {
+     //     $include = array('price_currency', 'base_price', 'base_price_currency', 'order_id', 'customer_name');
+            $include = array( 'base_price', 'base_price_currency', 'order_id', 'customer_name');
+        // $data must be an array
         if (is_array($data)) {
-            ksort($data);
+      
             $querystring = "";
-            foreach ($data as $k => $v) {
-                if (in_array($k, $include_params)) {
-                    $querystring = $querystring . $k . "=" . $v . "&";
+            while (count($include) > 0) {
+                $k = $include[0];
+                
+                if (isset($data[$k])) {
+                    $querystring .= $k . "=" . $data[$k] . "&";
+                    array_shift($include);
+                } else {
+                    return false;
                 }
             }
+
+            //Strip trailing '&' and lowercase 
+            $msg = substr($querystring, 0, strlen($querystring) - 1);
+            $msg = strtolower($msg);
+
+            // hash with key
+            $hash = hash_hmac("sha256", $msg, $key, true);
+            $encoded = base64_encode($hash);
+          
+            return $encoded;
         } else {
-            if (isset($data->payload)) {
-                $payload_obj = $data->payload;
-                $payload_arr = get_object_vars($payload_obj);
-                ksort($payload_arr);
-                $querystring = "";
-                foreach ($payload_arr as $k => $v) {
-                    if (in_array($k, $include_params)) {
-                        $querystring = $querystring . $k . "=" . $v . "&";
-                    }
-                }
-            }
+            return false;
         }
-        $query_str = substr($querystring, 0, strlen($querystring) - 1);
-        $query_str = strtolower($query_str);
-        $hash2 = hash_hmac("sha256", $query_str, $uniquekey, true);
-        $hash2_encoded = base64_encode($hash2);
-        return $hash2_encoded;
     }
+    
+    public function postData() {
+      //get webhook content
+      $response = new stdClass();
+      $post_data = file_get_contents("php://input");
+      error_log($post_data.'\n', 3, '/var/www/prestashop_16/log/gocoin_tester.log');
+      if (!$post_data) {
+        $response->error = 'Request body is empty';
+      }
+
+      $post_as_json = json_decode($post_data);
+      if (is_null($post_as_json)){
+        $response->error = 'Request body was not valid json';
+      } else {
+        $response = $post_as_json;
+      }
+      return $response;
+  }
 
 }

@@ -1,137 +1,142 @@
 <?php
-include(dirname(__FILE__).'/../../config/config.inc.php');
-include(dirname(__FILE__).'/../../header.php');                  
-class gocoin_validation  
-{
-	/**
-	* @see FrontController::initContent()
-	*/
-	public function initContent()
-	{
-      $this->gocoin = new Gocoinpay;
-      $result = $this->_paymentStandard();
-	 	  die($result);
-	}
-  
-	public function getNotifyData() {
-       $post_data = file_get_contents("php://input");
-            error_log('\n'.date('l jS \of F Y h:i:s A').$post_data,3,_PS_ROOT_DIR_.'/log/tester.log');
-        if (!$post_data) {
-            $response = new stdClass();
-            $response->error = 'Post Data Error';
-            return $response;
-        }
-        $response = json_decode($post_data);
-        return $response;
-  }
-	
-	private function _paymentStandard()
-	{
-      $module_display = $this->module->displayName;
-      
-      $response = $this->getNotifyData();
-       if(!$response){
-          die('error');
-        //======================Error=============================     
-      }
-      if($response->error){
-          
-          die('error');
-        //======================Error=============================     
-      }
-      if(isset($response->payload)){
-        //======================IF Response Get=============================     
-          
-         $event             = $response->event ;          
-         $cart_id           = (int) $response->payload->user_defined_3; 
-         $redirect_url      = $response->payload->redirect_url;   
-         $transction_id     = $response->payload->id;  
-         $total             = $response->payload->base_price;  
-         $status            = $response->payload->status;
-         $currency_id       = $response->payload->user_defined_1;
-         $secure_key        = $response->payload->user_defined_2 ;
-         $currency          = $response->payload->base_price_currency;
-         $currency_type     = $response->payload->price_currency;
-         $invoice_time      = $response->payload->created_at   ;      
-         $expiration_time   = $response->payload->expires_at   ;
-         $updated_time      = $response->payload->updated_at   ;
-         $merchant_id       = $response->payload->merchant_id  ;
-         $btc_price         = $response->payload->price  ;  
-         $price             = $response->payload->base_price  ;
-         $url = "https://gateway.gocoin.com/merchant/".$merchant_id ."/invoices/".$transction_id;
-         $fprint            = $response->payload->user_defined_8;
-         //=================== Set To Array=====================================//
-         //Used for adding in db
-         $iArray    = array(
-             'cart_id'=>$cart_id,
-             'invoice_id'=>$transction_id,
-             'url'=>$url,
-             'status'=>$event,
-             'btc_price'=>$btc_price,
-             'price'=>$price,
-             'currency'=>$currency,
-             'currency_type'=>$currency_type,
-             'invoice_time'=>$invoice_time,
-             'expiration_time'=>$expiration_time,
-             'updated_time'=>$updated_time,
-             'fingerprint'       => $fprint);   
-         
-         
-         
-         $cart = new Cart((int)$cart_id);
-         
-         $context->cart = $cart; 
-         if (!Validate::isLoadedObject($cart))
-					$errors[] = 'Invalid Cart ID';
-				else
-				{
-            $currency = new Currency((int)Currency::getIdByIsoCode($currency_id ));	
-               
-            $i_id =   $this->gocoin->getFPStatus($iArray );
-                    
-               if(!empty($i_id) && $i_id==$transction_id){
-                switch($event)
-                {
-                    case 'invoice_created':
-                    case 'invoice_payment_received':
-                        $sts = (int) Configuration::get('PS_OS_PREPARATION');
-                        $this->gocoin->validateOrder($cart_id, $sts, $total, $this->gocoin->displayName, NULL, $mailVars, $currency_id, false, $secure_key);
-                        $this->gocoin->addTransactionId((int)$this->gocoin->currentOrder,$transction_id);
-                        $iArray['order_id']= (int)$this->gocoin->currentOrder;
-                        $this->gocoin->updateTransaction('payment',$iArray );
-                      break;
-                    case 'invoice_ready_to_ship':
-                    
-                       if ($cart->OrderExists())
-                        {
-                           if (($status == 'paid') || ($status == 'ready_to_ship')) {
-                              $order = new Order((int)Order::getOrderByCartId($cart->id));
-                              $order_status = (int) Configuration::get('PS_OS_PAYMENT');
-                              $new_history = new OrderHistory();
-                              $new_history->id_order = (int)$order->id;
-                              $new_history->changeIdOrderState((int)$order_status, $order, true);
-                              $new_history->addWithemail(true);
-                              $iArray['order_id']= (int)$order->id;
 
-                              $this->gocoin->updateTransaction('payment',$iArray );  
+class GocoinpayValidationModuleFrontController extends ModuleFrontController {
+
+    /**
+     * @see FrontController::initContent()
+     */
+    public function initContent() {
+
+        $this->gocoin = new Gocoinpay;
+        $result = $this->_paymentStandard();
+        die($result);
+    }
+
+    private function _paymentStandard() {
+        $module_display = $this->module->displayName;
+        $data = $this->gocoin->postData();
+                        
+        if (isset($data->error)) {
+            return Logger::addLog($data->error);
+            ;
+        } else {
+            $key = Configuration::get('GOCOIN_ACCESS_KEY');
+            $event_id = $data->id;
+            $event = $data->event;
+            $invoice = $data->payload;
+            $payload_arr = get_object_vars($invoice);
+            ksort($payload_arr);
+            $signature = isset($invoice->user_defined_8) && !empty($invoice->user_defined_8) ? $invoice->user_defined_8 : '';
+            $sig_comp = $this->gocoin->sign($payload_arr, $key);
+            $status = $invoice->status;
+
+            $currency_id = $invoice->user_defined_1;
+            $secure_key = $invoice->user_defined_2;
+            $cart_id = (int) $invoice->user_defined_3;
+            $transction_id     = $invoice->id;  
+            
+            $cart = new Cart((int) $cart_id);
+            // Check that if a signature exists, it is valid
+            if (empty($signature) || empty($sig_comp)) {
+                $msg = "Order Signature is blank in GoCoin invoice ( $transction_id ) ";
+                Logger::addLog($msg);
+            } elseif ($signature != $sig_comp) {
+                $msg = "Signature : " . $signature . "does not match for GoCoin invoice ( $transction_id ) ";
+                Logger::addLog($msg);
+            } elseif ($signature == $sig_comp) {
+
+                if (!Validate::isLoadedObject($cart)) {
+                    $msg = "Invalid Cart ID for GoCoin invoice ( $transction_id ) ";
+                    Logger::addLog($msg);
+                } else {
+
+                    switch ($event) {
+
+                        case 'invoice_created':
+                            $msg = " GoCoin Invoice is created ( $transction_id ) ";
+                            break;
+
+                        case 'invoice_payment_received':
+                            if ($cart->OrderExists()) { 
+                                    $order = new Order((int) Order::getOrderByCartId($cart->id));
+                                    $order_status = (int) Configuration::get('PS_OS_PREPARATION');
+                                    $new_history = new OrderHistory();
+                                    $new_history->id_order = (int) $order->id;
+                                    $new_history->changeIdOrderState((int) $order_status, $order, true);
+                                      $new_history->addWithemail(true);
+                             }
+                            
+                            $msg = 'Order ' . $order->id . ' is '.$status; 
+                            Logger::addLog($msg);
+
+                            break;
+                        case 'invoice_merchant_review':
+                            if ($cart->OrderExists()) {
+                                $order = new Order((int) Order::getOrderByCartId($cart->id));
+                                $order_status = (int) Configuration::get('PS_OS_PREPARATION');
+                                $new_history = new OrderHistory();
+                                $new_history->id_order = (int) $order->id;
+                                $new_history->changeIdOrderState((int) $order_status, $order, true);
+                                  $new_history->addWithemail(true);
                             }
-                        }
-                        break;
-                }
-                
-               }
-               elseif(!empty($fprint)){
-                    $msg = "\n Fingerprint : ".$fprint. "does not match for Order id :".$order_id;
-                    error_log($msg, 3, _PS_ROOT_DIR_.'/log/gocoin_error_log.txt');
-                }
-                  
-           }
+                            $msg = 'Order ' . $order->id. ' is under review. Action must be taken from the GoCoin Dashboard.';
+                            Logger::addLog($msg);
+                            break;
+                        case 'invoice_ready_to_ship':
+                            if ($cart->OrderExists()) {
+                               
+                                if (($status == 'paid') || ($status == 'ready_to_ship')) {
+                                    $order = new Order((int) Order::getOrderByCartId($cart->id));
+                                    $order_status = (int) Configuration::get('PS_OS_PAYMENT');
+                                    $new_history = new OrderHistory();
+                                    $new_history->id_order = (int) $order->id;
+                                    $new_history->changeIdOrderState((int) $order_status, $order, true);
+                                    $this->gocoin->addTransactionId((int)$order->id,$transction_id); 
+                                    $new_history->addWithemail(true);
+                                     
+                                }
+                            }
+                            $msg = 'Order ' . $order->id . ' has been paid in full and confirmed on the blockchain.';
+                            Logger::addLog($msg);
+                            break;
 
-      }      
-      
-	}
-	
+                        case 'invoice_invalid':
+                            if ($cart->OrderExists()) {
+                                if (($status == 'paid') || ($status == 'ready_to_ship')) {
+                                    $order = new Order((int) Order::getOrderByCartId($cart->id));
+                                    $order_status = (int) Configuration::get('PS_OS_ERROR');
+                                    $new_history = new OrderHistory();
+                                    $new_history->id_order = (int) $order->id;
+                                    $new_history->changeIdOrderState((int) $order_status, $order, true);
+                                    $new_history->addWithemail(true);
+                                }
+                            } 
+                            $msg = 'Order ' . $order->id. ' is invalid and will not be confirmed on the blockchain.';
+                            Logger::addLog($msg);
+                            break;
+
+                        default:
+                                    $order = new Order((int) Order::getOrderByCartId($cart->id));
+                                    $order_status = (int) Configuration::get('PS_OS_ERROR');
+                                    $new_history = new OrderHistory();
+                                    $new_history->id_order = (int) $order->id;
+                                    $new_history->changeIdOrderState((int) $order_status, $order, true);
+                                    $new_history->addWithemail(true);
+                            $msg = "Unrecognized event type: " . $event;
+                            Logger::addLog($msg);
+                            break;
+                    }
+                }
+
+
+                if (isset($msg)) {
+                    $msg .= ' Event ID: ' . $event_id;
+                    Logger::addLog($msg);
+                    error_log($msg, 3, '/var/www/prestashop_16/log/gocoin_tester.log');
+                }
+            }
+        }
+    }
+
 }
 
-$validation = new gocoin_validation();
-$validation->initContent();
