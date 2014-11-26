@@ -67,6 +67,7 @@ class GocoinpayValidationModuleFrontController extends ModuleFrontController {
                              }
                             
                             $msg = 'Order ' . $order->id . ' is '.$status; 
+                            $msg .=" Price (Currency)  : ".  $invoice->price."(". $invoice->price_currency.")"; 
                             Logger::addLog($msg);
 
                             break;
@@ -80,6 +81,7 @@ class GocoinpayValidationModuleFrontController extends ModuleFrontController {
                                   $new_history->addWithemail(true);
                             }
                             $msg = 'Order ' . $order->id. ' is under review. Action must be taken from the GoCoin Dashboard.';
+                            $msg .=" Price (Currency)  : ".  $invoice->price."(". $invoice->price_currency.")"; 
                             Logger::addLog($msg);
                             break;
                         case 'invoice_ready_to_ship':
@@ -97,6 +99,7 @@ class GocoinpayValidationModuleFrontController extends ModuleFrontController {
                                 }
                             }
                             $msg = 'Order ' . $order->id . ' has been paid in full and confirmed on the blockchain.';
+                            $msg .=" Price (Currency)  : ".  $invoice->price."(". $invoice->price_currency.")"; 
                             Logger::addLog($msg);
                             break;
 
@@ -112,6 +115,7 @@ class GocoinpayValidationModuleFrontController extends ModuleFrontController {
                                 }
                             } 
                             $msg = 'Order ' . $order->id. ' is invalid and will not be confirmed on the blockchain.';
+                            $msg .=" Price (Currency)  : ".  $invoice->price."(". $invoice->price_currency.")"; 
                             Logger::addLog($msg);
                             break;
 
@@ -132,7 +136,7 @@ class GocoinpayValidationModuleFrontController extends ModuleFrontController {
                 if (isset($msg)) {
                     $msg .= ' Event ID: ' . $event_id;
                     Logger::addLog($msg);
-                    error_log($msg, 3, '/var/www/prestashop_16/log/gocoin_tester.log');
+                    //error_log($msg, 3, '/var/www/prestashop_16/log/gocoin_tester.log');
                 }
             }
         }
