@@ -12,3 +12,9 @@
 #### v1.3.5
 1) Added multi language support using function getPageLink() in files (/controllers/front/payment.php and payform.php)
 2) Corrected logo image
+
+#### v1.3.6
+1) Change in GoCoin Configration Setting in admin
+2) Change in User Authontication while invoice creation 
+3) Change in Signature and hash creation validation 
+4) Change in payment  validation and log the event
